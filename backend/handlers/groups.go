@@ -268,40 +268,103 @@ func ListGroupPostsHandler(w http.ResponseWriter, r *http.Request) {
 
 // AddGroupCommentHandler - POST { post_id, content }
 func AddGroupCommentHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("AddGroupCommentHandler hit")
+
 	uid := utils.GetUserIDFromContext(r)
 	if uid == "" {
+		fmt.Println("Unauthorized: no user context")
 		utils.Error(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 	userID, _ := strconv.ParseInt(uid, 10, 64)
+
 	var payload struct {
 		PostID  int64  `json:"post_id"`
 		Content string `json:"content"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		fmt.Println("Bad JSON payload:", err)
 		utils.Error(w, http.StatusBadRequest, "Invalid input")
 		return
 	}
-	// check membership by looking up post's group
+
+	fmt.Printf("Input post_id=%d content=%s user=%d\n", payload.PostID, payload.Content, userID)
+
+	// lookup group for this post
 	var gid int64
 	err := db.DB.QueryRow("SELECT group_id FROM group_posts WHERE id = ?", payload.PostID).Scan(&gid)
 	if err != nil {
+		fmt.Println("Invalid post id:", payload.PostID, "error:", err)
 		utils.Error(w, http.StatusBadRequest, "Invalid post")
 		return
 	}
+
+	// check membership
 	var cnt int
 	db.DB.QueryRow("SELECT COUNT(1) FROM group_members WHERE group_id=? AND user_id=?", gid, userID).Scan(&cnt)
+	fmt.Println("Membership check:", cnt)
 	if cnt == 0 {
+		fmt.Println("User not a member of group", gid)
 		utils.Error(w, http.StatusForbidden, "Not a member")
 		return
 	}
-	_, err = db.DB.Exec("INSERT INTO group_comments (post_id, user_id, content) VALUES (?, ?, ?)", payload.PostID, userID, payload.Content)
+
+	// insert
+	fmt.Printf("Attempting insert: post_id=%d, user_id=%d, content='%s'\n", payload.PostID, userID, payload.Content)
+	res, err := db.DB.Exec("INSERT INTO group_comments (post_id, user_id, content) VALUES (?, ?, ?)", payload.PostID, userID, payload.Content)
 	if err != nil {
-		utils.Error(w, http.StatusInternalServerError, "Failed")
+		fmt.Println("Insert failed:", err)
+		utils.Error(w, http.StatusInternalServerError, "Failed to insert comment")
 		return
 	}
+
+	id, _ := res.LastInsertId()
+	fmt.Println("Inserted comment with ID:", id)
 	utils.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
+
+// ListGroupCommentsHandler - GET /api/group/comments?post_id=<id>
+func ListGroupCommentsHandler(w http.ResponseWriter, r *http.Request) {
+    postIDStr := r.URL.Query().Get("post_id")
+    if postIDStr == "" {
+        utils.Error(w, http.StatusBadRequest, "Missing post_id")
+        return
+    }
+    pid, err := strconv.ParseInt(postIDStr, 10, 64)
+    if err != nil {
+        utils.Error(w, http.StatusBadRequest, "Invalid post_id")
+        return
+    }
+
+    rows, err := db.DB.Query(`
+        SELECT gc.id, gc.post_id, gc.user_id, u.nickname, gc.content, gc.created_at 
+        FROM group_comments gc 
+        JOIN users u ON gc.user_id = u.id
+        WHERE gc.post_id = ? ORDER BY gc.created_at ASC
+    `, pid)
+    if err != nil {
+        utils.Error(w, http.StatusInternalServerError, "Failed to query comments")
+        return
+    }
+    defer rows.Close()
+
+    var out []map[string]interface{}
+    for rows.Next() {
+        var id, postID, userID int64
+        var nickname, content, created string
+        rows.Scan(&id, &postID, &userID, &nickname, &content, &created)
+        out = append(out, map[string]interface{}{
+            "id": id,
+            "post_id": postID,
+            "user_id": userID,
+            "nickname": nickname,
+            "content": content,
+            "created_at": created,
+        })
+    }
+    utils.JSON(w, http.StatusOK, out)
+}
+
 
 // CreateEventHandler - POST { group_id, title, description, event_time }
 func CreateEventHandler(w http.ResponseWriter, r *http.Request) {

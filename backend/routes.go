@@ -52,6 +52,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/group/posts", handlers.ListGroupPostsHandler)
 	mux.Handle("/api/group/messages", AuthMiddleware(http.HandlerFunc(handlers.ListGroupMessagesHandler)))
 	mux.Handle("/api/group/comment", AuthMiddleware(http.HandlerFunc(handlers.AddGroupCommentHandler)))
+	mux.Handle("/api/group/comments", AuthMiddleware(http.HandlerFunc(handlers.ListGroupCommentsHandler)))
 	mux.Handle("/api/group/event/create", AuthMiddleware(http.HandlerFunc(handlers.CreateEventHandler)))
 	mux.Handle("/api/group/event/vote", AuthMiddleware(http.HandlerFunc(handlers.VoteEventHandler)))
 	mux.Handle("/api/group/events", AuthMiddleware(http.HandlerFunc(handlers.ListEventsHandler)))
@@ -66,7 +67,6 @@ func RegisterRoutes(mux *http.ServeMux) {
 		if strings.HasPrefix(r.URL.Path, "/api/") ||
 			strings.HasPrefix(r.URL.Path, "/ws") ||
 			strings.HasPrefix(r.URL.Path, "/uploads/") {
-			mux.ServeHTTP(w, r)
 			return
 		}
 

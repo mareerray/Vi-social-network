@@ -1,1 +1,5 @@
 .DS_Store
+node_modules/
+backend/.socialnetwork.db
+frontend/xx.md
+backend/.socialnetwork.db
