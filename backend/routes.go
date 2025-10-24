@@ -62,22 +62,18 @@ func RegisterRoutes(mux *http.ServeMux) {
 	// === SPA fallback handler for Vue Router ===
 	fileServer := http.FileServer(http.Dir(staticDir))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Exclude API, WebSocket, and uploads routes
-		if strings.HasPrefix(r.URL.Path, "/api/") ||
-			strings.HasPrefix(r.URL.Path, "/ws") ||
-			strings.HasPrefix(r.URL.Path, "/uploads/") {
-			mux.ServeHTTP(w, r)
-			return
-		}
+		// This catch-all handler serves the SPA files. API, websocket and uploads
+		// routes are registered above and will be matched before this handler.
 
-		// Resolve actual file path
+		// Resolve actual file path inside the staticDir
 		requestedPath := filepath.Join(staticDir, r.URL.Path)
-		if _, err := os.Stat(requestedPath); err == nil && !strings.HasSuffix(r.URL.Path, "/") {
+		if info, err := os.Stat(requestedPath); err == nil && !info.IsDir() && !strings.HasSuffix(r.URL.Path, "/") {
+			// Serve the static file directly (e.g. /assets/main.css)
 			fileServer.ServeHTTP(w, r)
 			return
 		}
 
-		// Serve index.html for all other routes (SPA history mode)
+		// For any other path, serve index.html so the SPA router can take over
 		http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
 	})
 }
@@ -130,6 +126,7 @@ func rrrregisterRoutes(mux *http.ServeMux) {
 	mux.Handle("/api/group/create", AuthMiddleware(http.HandlerFunc(handlers.CreateGroupHandler)))
 	mux.HandleFunc("/api/groups", handlers.ListGroupsHandler)
 	mux.HandleFunc("/api/group", handlers.GetGroupHandler)
+	mux.Handle("/api/groups/", AuthMiddleware(http.HandlerFunc(handlers.GetGroupMembersHandler))) // new members endpoint
 	mux.Handle("/api/group/invite", AuthMiddleware(http.HandlerFunc(handlers.InviteHandler)))
 	mux.Handle("/api/group/invite/respond", AuthMiddleware(http.HandlerFunc(handlers.RespondInviteHandler)))
 	mux.Handle("/api/group/membership", AuthMiddleware(http.HandlerFunc(handlers.CheckMembershipHandler)))

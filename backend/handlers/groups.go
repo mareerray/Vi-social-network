@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -66,6 +67,19 @@ func ListGroupsHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetGroupHandler - GET /api/group?id=<id>
 func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
+	// Add panic recovery
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("Panic in GetGroupHandler: %v", rec)
+			utils.Error(w, http.StatusInternalServerError, "Internal server error")
+		}
+	}()
+
+	// Check database connection
+	if db.DB == nil {
+		utils.Error(w, http.StatusInternalServerError, "Database not initialized")
+		return
+	}
 	idParam := r.URL.Query().Get("id")
 	if idParam == "" {
 		utils.Error(w, http.StatusBadRequest, "Missing id")
@@ -83,6 +97,7 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
 		Description sql.NullString `json:"description"`
 		Created     string         `json:"created_at"`
 	}
+
 	err = db.DB.QueryRow("SELECT id, owner_id, name, description, created_at FROM groups WHERE id = ?", gid).Scan(&g.ID, &g.OwnerID, &g.Name, &g.Description, &g.Created)
 	if err != nil {
 		utils.Error(w, http.StatusNotFound, "Group not found")
@@ -90,7 +105,12 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// get members count
 	var memberCount int
-	db.DB.QueryRow("SELECT COUNT(1) FROM group_members WHERE group_id = ?", gid).Scan(&memberCount)
+	err = db.DB.QueryRow("SELECT COUNT(1) FROM group_members WHERE group_id = ?", gid).Scan(&memberCount)
+	if err != nil {
+		// Handle the error - either log it or set default
+		log.Printf("Failed to get member count for group %d: %v", gid, err)
+		memberCount = 0 // Set safe default
+	}
 	// convert sql.NullString to plain string for JSON response
 	groupObj := map[string]interface{}{
 		"id":          g.ID,
@@ -122,14 +142,15 @@ func InviteHandler(w http.ResponseWriter, r *http.Request) {
 		utils.Error(w, http.StatusBadRequest, "Invalid input")
 		return
 	}
-	// only group owner can invite
-	var ownerID int64
-	if err := db.DB.QueryRow("SELECT owner_id FROM groups WHERE id = ?", payload.GroupID).Scan(&ownerID); err != nil {
-		utils.Error(w, http.StatusBadRequest, "Invalid group")
+	// check if inviter is a member
+	var memberCount int
+	if err := db.DB.QueryRow("SELECT COUNT(1) FROM group_members WHERE group_id = ? AND user_id = ?",
+		payload.GroupID, inviter).Scan(&memberCount); err != nil {
+		utils.Error(w, http.StatusInternalServerError, "Failed to check membership")
 		return
 	}
-	if ownerID != inviter {
-		utils.Error(w, http.StatusForbidden, "Only group owner can invite")
+	if memberCount == 0 {
+		utils.Error(w, http.StatusForbidden, "Only group members can invite")
 		return
 	}
 	// deduplicate pending invites
