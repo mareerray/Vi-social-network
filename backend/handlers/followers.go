@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// POST /api/follow - send follow request (handles public/private profile logic)
+/* // POST /api/follow - send follow request (handles public/private profile logic)
 func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	userIDStr := utils.GetUserIDFromContext(r)
 	if userIDStr == "" {
@@ -60,6 +60,80 @@ func FollowHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// notify target about follow request
 	_ = Notify(payload.TargetID, userID, "follow_request", map[string]interface{}{"requester_id": userID, "url": fmt.Sprintf("/profile/%d/requests", userID)})
+	utils.JSON(w, http.StatusOK, map[string]string{"status": "requested"})
+} */
+
+// POST /api/follow - send follow request (handles public/private profile logic)
+func FollowHandler(w http.ResponseWriter, r *http.Request) {
+	userIDStr := utils.GetUserIDFromContext(r)
+	if userIDStr == "" {
+		utils.Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var payload struct {
+		TargetID int64 `json:"target_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		utils.Error(w, http.StatusBadRequest, "Invalid input")
+		return
+	}
+
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		utils.Error(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	// Check target profile type
+	var profileType string
+	err = db.DB.QueryRow("SELECT profile_type FROM users WHERE id = ?", payload.TargetID).Scan(&profileType)
+	if err != nil {
+		utils.Error(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	profileType = strings.ToLower(profileType)
+
+	if profileType == "public" {
+		// Auto-follow directly for public profiles
+		_, err := db.DB.Exec(
+			"INSERT OR IGNORE INTO followers (follower_id, followed_id, created_at) VALUES (?, ?, datetime('now'))",
+			userID, payload.TargetID,
+		)
+		if err != nil {
+			utils.Error(w, http.StatusInternalServerError, "Failed to follow")
+			return
+		}
+
+		// Send notification as an immediate "follow_request_accepted"
+		_ = Notify(payload.TargetID, userID, "follow_request_accepted",
+			map[string]interface{}{
+				"follower_id": userID,
+				"url":         fmt.Sprintf("/profile/%d", userID),
+			})
+
+		utils.JSON(w, http.StatusOK, map[string]string{"status": "followed"})
+		return
+	}
+
+	// Private accounts: create follow request
+	_, err = db.DB.Exec(
+		"INSERT OR IGNORE INTO follow_requests (sender_id, receiver_id, status, created_at) VALUES (?, ?, 'pending', datetime('now'))",
+		userID, payload.TargetID,
+	)
+	if err != nil {
+		utils.Error(w, http.StatusInternalServerError, "Failed to send request")
+		return
+	}
+
+	// Notify target (receiver) about the pending follow request
+	_ = Notify(payload.TargetID, userID, "follow_request",
+		map[string]interface{}{
+			"follower_id": userID,
+			"url":         fmt.Sprintf("/profile/%d", userID),
+		})
+
 	utils.JSON(w, http.StatusOK, map[string]string{"status": "requested"})
 }
 

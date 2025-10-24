@@ -64,6 +64,46 @@
 										<small class="text-muted">{{ formatTime(n.created_at) }}</small>
 									</div>
 									<div class="small text-muted mt-1">{{ (parseData(n) && parseData(n).preview) ? parseData(n).preview : '' }}</div>
+									<!-- Follow Request Notification -->
+									<div v-if="n.type === 'follow_request'" class="mt-2">
+										<div class="d-flex align-items-center">
+											<i class="fas fa-user-plus text-primary me-2"></i>
+											<span>
+											<strong>{{ parseData(n).actor_nickname || 'Someone' }}</strong>
+											wants to follow you.
+											</span>
+										</div>
+
+										<div class="mt-2">
+											<button
+											class="btn btn-sm btn-success me-2"
+											@click.stop.prevent="handleFollowRequest(parseData(n), 'accept')"
+											>
+											Accept
+											</button>
+											<button
+											class="btn btn-sm btn-outline-secondary"
+											@click.stop.prevent="handleFollowRequest(parseData(n), 'decline')"
+											>
+											Decline
+											</button>
+										</div>
+									</div>
+
+									<!-- Follow Request Accepted -->
+									<div v-else-if="n.type === 'follow_request_accepted'" class="mt-2 text-success">
+									<i class="fas fa-check-circle me-2"></i>
+									<strong>{{ parseData(n).actor_nickname || 'Someone' }}</strong>
+									accepted your follow request.
+									</div>
+
+									<!-- Follow Request Declined -->
+									<div v-else-if="n.type === 'follow_request_declined'" class="mt-2 text-danger">
+									<i class="fas fa-times-circle me-2"></i>
+									<strong>{{ parseData(n).actor_nickname || 'Someone' }}</strong>
+									declined your follow request.
+									</div>
+
 									<div v-if="n.type === 'group_invite'" class="mt-2">
 										<button class="btn btn-sm btn-success me-2" @click.stop.prevent="(() => { const d = parseData(n); if (d) respondToInvite(d.invite_id, 'accept', d.group_id) })()">Accept</button>
 										<button class="btn btn-sm btn-outline-secondary" @click.stop.prevent="(() => { const d = parseData(n); if (d) respondToInvite(d.invite_id, 'decline', d.group_id) })()">Decline</button>
@@ -131,6 +171,8 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/store/auth'
 import { useNotificationStore } from '@/store/notification'
 import { respondInvite } from '@/api/groups'
+import api from '@/api'
+
 
 export default defineComponent({
 	setup() {
@@ -172,6 +214,38 @@ export default defineComponent({
 			}
 		}
 
+		const handleFollowRequest = async (data, action) => {
+			try {
+				console.log('📦 Raw notification data:', data)
+				// Extract sender_id from notification data
+				const senderId = data.follower_id
+				console.log('🔑 Extracted senderId:', senderId)
+				
+				if (!senderId) {
+				console.error('Missing follower_id:', data)
+				return
+				}
+
+				const endpoint = action === 'accept' 
+				? '/api/follow/accept' 
+				: '/api/follow/decline'
+				
+				console.log('📤 Sending to backend:', { sender_id: senderId })
+
+				// Send { sender_id: ... } to backend
+				await api.post(endpoint, { sender_id: senderId })
+				
+				// Refresh notifications
+				await notif.fetch()
+				
+				console.log(`✅ Follow request ${action}ed`)
+			} catch (e) {
+				console.error('❌ Failed:', e)
+				console.error('Error response:', e.response?.data)
+			}
+		}
+
+
 		const onLogout = async () => {
 			await auth.logout()
 			location.href = '/'
@@ -199,7 +273,7 @@ export default defineComponent({
 			})
 		}
 
-		return { user, notifications, unreadCount, open, toggleOpen, markAll, markRead, onLogout, profileOpen, respondToInvite, parseData, formatTime, openNotification }
+		return { user, notifications, unreadCount, open, toggleOpen, markAll, markRead, onLogout, profileOpen, respondToInvite, parseData, formatTime, openNotification, handleFollowRequest }
 	}
 })
 </script>
