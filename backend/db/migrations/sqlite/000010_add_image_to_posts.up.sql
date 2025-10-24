@@ -1,0 +1,1 @@
+-- Migration intentionally left blank; posts table already declares image_url in 000006_create_posts_and_comments.

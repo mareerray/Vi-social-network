@@ -1,0 +1,1 @@
+-- Migration intentionally left blank; comments table gained image_url in 000006_create_posts_and_comments.

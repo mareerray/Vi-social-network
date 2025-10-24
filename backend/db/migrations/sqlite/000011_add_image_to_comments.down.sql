@@ -1,0 +1,1 @@
+-- Migration intentionally left blank to mirror the no-op up migration.
