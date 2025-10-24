@@ -27,7 +27,7 @@ func InitDB() {
 
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "./backend/socialnetwork.db"
+		dbPath = "./socialnetwork.db"
 	}
 
 	// convert to absolute path for clarity
@@ -54,7 +54,12 @@ func InitDB() {
 	// Determine migrations directory. Prefer MIGRATIONS_PATH env, then common locations.
 	migrationsPath := os.Getenv("MIGRATIONS_PATH")
 	if migrationsPath == "" {
-		candidates := []string{"backend/db/migrations/sqlite", "./backend/db/migrations/sqlite", "/migrations", "/app/migrations"}
+		candidates := []string{
+			"db/migrations/sqlite",
+			"./db/migrations/sqlite",
+			"../backend/db/migrations/sqlite",
+			"./migrations/sqlite",
+		}
 		for _, c := range candidates {
 			if _, statErr := os.Stat(c); statErr == nil {
 				migrationsPath = c

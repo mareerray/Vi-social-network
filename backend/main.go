@@ -20,7 +20,7 @@ func main() {
 	utils.SetDB(db.DB)
 
 	mux := http.NewServeMux()
-	registerRoutes(mux)
+	RegisterRoutes(mux)
 
 	// CORS handler
 	c := cors.New(cors.Options{
