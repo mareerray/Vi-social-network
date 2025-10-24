@@ -136,7 +136,7 @@
               <!-- About Card -->
               <div class="card mb-4">
                 <div class="card-header bg-gradient">
-                  <h5 class="mb-0 text-white"><i class="fas fa-user-circle me-2"></i>About</h5>
+                  <h5 class="mb-0 text-dark"><i class="fas fa-user-circle me-2"></i>About</h5>
                 </div>
                 <div class="card-body">
                   <ul class="list-unstyled">
@@ -161,7 +161,7 @@
               <!-- Followers Card -->
               <div class="card mb-4">
                 <div class="card-header bg-gradient">
-                  <h5 class="mb-0 text-white">
+                  <h5 class="mb-0 text-dark">
                     <i class="fas fa-users me-2"></i>
                     Followers ({{ followers.length }})
                   </h5>
@@ -182,7 +182,7 @@
               <!-- Following Card -->
               <div class="card">
                 <div class="card-header bg-gradient">
-                  <h5 class="mb-0 text-white">
+                  <h5 class="mb-0 text-dark">
                     <i class="fas fa-heart me-2"></i>
                     Following ({{ followingList.length }})
                   </h5>
