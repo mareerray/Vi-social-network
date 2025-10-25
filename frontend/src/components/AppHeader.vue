@@ -227,8 +227,8 @@ export default defineComponent({
 				}
 
 				const endpoint = action === 'accept' 
-				? '/api/follow/accept' 
-				: '/api/follow/decline'
+				? '/follow/accept' 
+				: '/follow/decline'
 				
 				console.log('📤 Sending to backend:', { sender_id: senderId })
 

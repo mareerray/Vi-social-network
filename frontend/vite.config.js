@@ -12,7 +12,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '^/api': 'http://localhost:8080',
+      '^/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''), // removes the /api prefix
+      },
       '/login': 'http://localhost:8080',
       '/register': 'http://localhost:8080',
       '/logout': 'http://localhost:8080',
