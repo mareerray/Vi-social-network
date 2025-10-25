@@ -1,0 +1,28 @@
+# Create .dockerignore at project root
+cat > .dockerignore << 'EOF'
+# Git
+.git
+.gitignore
+
+# Frontend (excluded from backend build)
+frontend/node_modules
+frontend/dist
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
+EOF
