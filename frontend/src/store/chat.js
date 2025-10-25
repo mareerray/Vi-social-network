@@ -44,8 +44,8 @@ export const useChatStore = defineStore('chat', {
 			if (this.socket && this.connected) return
 
 			// connect to backend websocket (backend runs on :8080)
-			const backendHost = window.location.hostname || 'localhost'
-			const url = `ws://${backendHost}:8080/ws`
+			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+			const url = `${protocol}//${window.location.host}/ws`;
 			this.socket = new WebSocket(url)
 
 			console.log('chat: connecting to', url)

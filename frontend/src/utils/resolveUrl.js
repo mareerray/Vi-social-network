@@ -7,5 +7,5 @@ export function resolveAsset(path) {
   // ensure leading slash
   const normalized = path.startsWith('/') ? path : `/${path}`
   // point directly to backend in dev
-  return `http://localhost:8080${normalized}`
+  return normalized;
 }

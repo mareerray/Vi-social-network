@@ -24,5 +24,5 @@ export const getMessages = () => {
 
 // Fetch message history between current user and other user (paginated)
 export const fetchHistory = (userId, offset = 0) => {
-  return api.get('/api/messages/history', { params: { user_id: userId, offset } })
+  return api.get('/messages/history', { params: { user_id: userId, offset } })
 }

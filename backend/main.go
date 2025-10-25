@@ -24,7 +24,7 @@ func main() {
 
 	// CORS handler
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:5174"},
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:5174","http://social-network-frontend"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,

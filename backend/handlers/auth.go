@@ -148,8 +148,9 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Expires:  expiry,
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
-		SameSite: http.SameSiteStrictMode,
+		// Secure:   r.TLS != nil,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	w.Header().Set("Content-Type", "application/json")
@@ -218,8 +219,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Expires:  expiry,
 		HttpOnly: true,
-		Secure:   r.TLS != nil, // only secure in HTTPS
-		SameSite: http.SameSiteStrictMode,
+		// Secure:   r.TLS != nil, // only secure in HTTPS
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
 	})
 
 	w.Header().Set("Content-Type", "application/json")
