@@ -223,10 +223,16 @@ export default {
           
           let memberIds = []
           try {
-            // Get current group members from group data first
-            if (this.group && this.group.group && Array.isArray(this.group.group.members_list)) {
-              memberIds = this.group.group.members_list.map(m => Number(m.id || m))
+            // Prefer top-level members_list (added server-side). Fall back to nested group.members_list.
+            const ml = (this.group && Array.isArray(this.group.members_list)) ? this.group.members_list :
+                       (this.group && this.group.group && Array.isArray(this.group.group.members_list) ? this.group.group.members_list : [])
+            memberIds = ml.map(m => Number((m && (m.id || m)) || m))
+            // also exclude the owner explicitly
+            if (this.group && this.group.group && this.group.group.owner_id) {
+              memberIds.push(Number(this.group.group.owner_id))
             }
+            // dedupe
+            memberIds = Array.from(new Set(memberIds.filter(id => !Number.isNaN(id))))
             console.log('Group members from group data:', memberIds)
           } catch (err) {
             console.warn('Could not get members from group data:', err)

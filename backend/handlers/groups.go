@@ -12,6 +12,7 @@ import (
 	"social-network/backend/db"
 	"social-network/backend/utils"
 	"strconv"
+	"strings"
 )
 
 // CreateGroupHandler - POST { name, description }
@@ -111,6 +112,32 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to get member count for group %d: %v", gid, err)
 		memberCount = 0 // Set safe default
 	}
+	// load members list (id, nickname, full_name, avatar) so frontend can filter invite candidates
+	membersRows, mErr := db.DB.Query(`
+		SELECT u.id, u.nickname, u.first_name, u.last_name, u.avatar
+		FROM users u
+		INNER JOIN group_members gm ON u.id = gm.user_id
+		WHERE gm.group_id = ?
+	`, gid)
+	var membersList []map[string]interface{}
+	if mErr == nil {
+		defer membersRows.Close()
+		for membersRows.Next() {
+			var id int64
+			var nick, firstName, lastName, avatar sql.NullString
+			if scanErr := membersRows.Scan(&id, &nick, &firstName, &lastName, &avatar); scanErr == nil {
+				full := strings.TrimSpace(firstName.String + " " + lastName.String)
+				membersList = append(membersList, map[string]interface{}{
+					"id":        id,
+					"nickname":  nick.String,
+					"full_name": full,
+					"avatar":    utils.AbsURL(r, avatar.String),
+				})
+			}
+		}
+	} else {
+		log.Printf("Failed to load members for group %d: %v", gid, mErr)
+	}
 	// convert sql.NullString to plain string for JSON response
 	groupObj := map[string]interface{}{
 		"id":          g.ID,
@@ -120,8 +147,9 @@ func GetGroupHandler(w http.ResponseWriter, r *http.Request) {
 		"created_at":  g.Created,
 	}
 	resp := map[string]interface{}{
-		"group":   groupObj,
-		"members": memberCount,
+		"group":        groupObj,
+		"members":      memberCount,
+		"members_list": membersList,
 	}
 	utils.JSON(w, http.StatusOK, resp)
 }
