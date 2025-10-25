@@ -8,6 +8,37 @@
       <h5>Members: {{ group.members }}</h5>
     </div>
 
+        <!-- Invite users (visible to members and owner) -->
+    <div v-if="group.group && isMember || isOwner" class="card mb-3">
+      <div class="card-body">
+        <h5>Invite Users to Group</h5>
+        <div v-if="followers.length === 0" class="text-muted mb-2">
+          No users available to invite
+        </div>
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" v-model="userFilter" placeholder="Search users...">
+        </div>
+        <div class="list-group">
+          <div v-for="f in filteredUsers" :key="f.id" class="list-group-item d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+              <img v-if="f.avatar" :src="f.avatar" alt="avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;" />
+              <div>
+                <strong>{{ f.nickname || ('User ' + f.id) }}</strong>
+                <div v-if="f.full_name" class="small text-muted">{{ f.full_name }}</div>
+              </div>
+            </div>
+            <button 
+              class="btn btn-sm" 
+              :class="invitingIds.includes(f.id) ? 'btn-secondary' : 'btn-primary'"
+              :disabled="invitingIds.includes(f.id)"
+              @click="invite(f.id)">
+              {{ invitingIds.includes(f.id) ? 'Inviting...' : 'Invite' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Create Post -->
     <div v-if="isMember" class="card mb-3">
       <div class="card-body">
         <h5>Create Post</h5>
@@ -23,20 +54,6 @@
       </div>
     </div>
 
-    <!-- Invite followers (only visible to owner) -->
-  <div v-if="group.group && followers && followers.length > 0 && isOwner" class="card mb-3">
-      <div class="card-body">
-        <h5>Invite Followers</h5>
-        <div class="list-group">
-          <div v-for="f in followers" :key="f.id" class="list-group-item d-flex justify-content-between align-items-center">
-            <div>
-              <strong>{{ f.nickname || ('User ' + f.id) }}</strong>
-            </div>
-            <button class="btn btn-sm btn-primary" @click="invite(f.id)">Invite</button>
-          </div>
-        </div>
-      </div>
-    </div>
   <!-- Pending join requests (owner only) -->
   <div v-if="requests && requests.length > 0 && isOwner" class="card mb-3">
       <div class="card-body">
@@ -137,13 +154,23 @@
 <script>
 import { getGroup, listGroupPosts, createGroupPost, addGroupComment, inviteToGroup, checkMembership, requestToJoin, respondRequest, listRequests, getRequestStatus, createEvent, voteEvent, listEvents } from '../api/groups'
 import Comment from '@/components/Comment.vue'
-import { getFollowers } from '@/api/users'
+import { listUsers } from '@/api/users'
 import { useAuthStore } from '@/store/auth'
 import { useChatStore } from '@/store/chat'
 
 export default {
   components: { Comment },
-  data() { return { group: {}, posts: [], content: '', commentText: {}, followers: [], requests: [], invitingIds: [], hasPendingRequest: false, isMember: false, isOwner: false, events: [], newEvent: { title: '', description: '', event_time: '' }, // chat
+  computed: {
+    filteredUsers() {
+      if (!this.userFilter) return this.followers
+      const filter = this.userFilter.toLowerCase()
+      return this.followers.filter(user => 
+        (user.nickname || '').toLowerCase().includes(filter) ||
+        (user.full_name || '').toLowerCase().includes(filter)
+      )
+    }
+  },
+  data() { return { group: {}, posts: [], content: '', commentText: {}, followers: [], requests: [], invitingIds: [], hasPendingRequest: false, isMember: false, isOwner: false, events: [], userFilter: '', newEvent: { title: '', description: '', event_time: '' }, // chat
       chatInput: '',
       groupMessages: [],
       loadingGroupMessages: false,
@@ -171,23 +198,65 @@ export default {
   methods: {
     async load() {
       const id = this.$route.params.id
-  const g = await getGroup(id)
-  this.group = g.data
-  // determine ownership
-  const auth = useAuthStore()
-  this.isOwner = auth.user && this.group && this.group.group && Number(auth.user.user_id) === Number(this.group.group.owner_id)
-        // if current user is the owner, load owner's followers so owner can invite
-        try {
-          if (auth.user && this.group && this.group.group && Number(auth.user.user_id) === Number(this.group.group.owner_id)) {
-            getFollowers(this.group.group.owner_id).then(res => { this.followers = Array.isArray(res.data) ? res.data : [] }).catch(() => { this.followers = [] })
-          }
-        } catch (e) {
-          this.followers = []
-        }
-      const postsRes = await listGroupPosts(id)
-        this.posts = postsRes.data
-      // check membership to conditionally show create post UI
+      const g = await getGroup(id)
+      this.group = g.data
+      console.log('Group data:', this.group) // Log full group data to see structure
+      
+      // determine ownership
+      const auth = useAuthStore()
+      this.isOwner = auth.user && this.group && this.group.group && Number(auth.user.user_id) === Number(this.group.group.owner_id)
+      
+      // check membership early so we know whether to load followers
       await this.checkMembershipAPI(id)
+      
+      // Get list of current members
+      const membersList = this.group && this.group.members_list ? this.group.members_list :
+                         this.group && this.group.group && this.group.group.members ? this.group.group.members :
+                         []
+      console.log('Current group members:', membersList)
+
+      // if current user is a member or owner, load all users that can be invited
+      try {
+        if (auth.user && (this.isMember || this.isOwner)) {
+          const res = await listUsers()
+          console.log('Full API response:', res)
+          
+          let memberIds = []
+          try {
+            // Get current group members from group data first
+            if (this.group && this.group.group && Array.isArray(this.group.group.members_list)) {
+              memberIds = this.group.group.members_list.map(m => Number(m.id || m))
+            }
+            console.log('Group members from group data:', memberIds)
+          } catch (err) {
+            console.warn('Could not get members from group data:', err)
+          }
+          
+          // Ensure we have users data in the correct format
+          const currentUserId = Number(auth.user.user_id)
+          const users = Array.isArray(res) ? res : 
+                       Array.isArray(res.data) ? res.data :
+                       []
+          console.log('All users:', users)
+          
+          // Filter out current user and existing members
+          this.followers = users.filter(user => {
+            if (!user || !user.id) return false
+            const userId = Number(user.id)
+            const isAvailable = userId !== currentUserId && !memberIds.includes(userId)
+            console.log(`User ${userId}: isAvailable=${isAvailable} (not current user && not member)`)
+            return isAvailable
+          })
+          
+          console.log('Filtered users (available to invite):', this.followers)
+        }
+      } catch (e) {
+        console.error('Failed to load users:', e)
+        this.followers = []
+      }
+
+      const postsRes = await listGroupPosts(id)
+      this.posts = postsRes.data
       // init chat if member
       if (this.isMember) {
         this.initGroupChat()

@@ -1,1 +1,8 @@
 .DS_Store
+node_modules
+.env
+socialnetwork.db
+socialnetwork.db-shm
+socialnetwork.db-shm
+socialnetwork.db-wal
+socialnetwork.db-shm

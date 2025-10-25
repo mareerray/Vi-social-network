@@ -72,6 +72,16 @@ export const unfollow = async (targetId) => {
 }
 
 export const listUsers = async () => {
-  const res = await apiClient.get('/api/users');
-  return res.data;
+  try {
+    const res = await apiClient.get('/api/users');
+    console.log('listUsers API response:', res);
+    if (!res.data) {
+      console.error('listUsers: No data in response');
+      return { users: [] };
+    }
+    return res.data;
+  } catch (error) {
+    console.error('listUsers API error:', error);
+    throw error;
+  }
 }
