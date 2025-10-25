@@ -52,6 +52,11 @@ export function addGroupComment(payload) {
   return api.post('/api/group/comment', payload)
 }
 
+export function listGroupComments(post_id) {
+  return api.get(`/api/group/comments?post_id=${post_id}`)
+}
+
+
 export function createEvent(payload) {
   return api.post('/api/group/event/create', payload)
 }

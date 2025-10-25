@@ -87,7 +87,7 @@
         <p>{{ p.content }}</p>
   <img v-if="p.image_url" :src="p.image_url" class="img-fluid" />
         <div class="mt-2">
-          <Comment :postId="p.id" @comment-added="load" />
+          <Comment :postId="p.id" :isGroup="true" @comment-added="load" />
         </div>
       </div>
     </div>

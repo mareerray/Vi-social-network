@@ -52,6 +52,7 @@ func RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/group/posts", handlers.ListGroupPostsHandler)
 	mux.Handle("/api/group/messages", AuthMiddleware(http.HandlerFunc(handlers.ListGroupMessagesHandler)))
 	mux.Handle("/api/group/comment", AuthMiddleware(http.HandlerFunc(handlers.AddGroupCommentHandler)))
+	mux.Handle("/api/group/comments", AuthMiddleware(http.HandlerFunc(handlers.ListGroupCommentsHandler)))
 	mux.Handle("/api/group/event/create", AuthMiddleware(http.HandlerFunc(handlers.CreateEventHandler)))
 	mux.Handle("/api/group/event/vote", AuthMiddleware(http.HandlerFunc(handlers.VoteEventHandler)))
 	mux.Handle("/api/group/events", AuthMiddleware(http.HandlerFunc(handlers.ListEventsHandler)))
@@ -62,8 +63,12 @@ func RegisterRoutes(mux *http.ServeMux) {
 	// === SPA fallback handler for Vue Router ===
 	fileServer := http.FileServer(http.Dir(staticDir))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// This catch-all handler serves the SPA files. API, websocket and uploads
-		// routes are registered above and will be matched before this handler.
+		// Exclude API, WebSocket, and uploads routes
+		if strings.HasPrefix(r.URL.Path, "/api/") ||
+			strings.HasPrefix(r.URL.Path, "/ws") ||
+			strings.HasPrefix(r.URL.Path, "/uploads/") {
+			return
+		}
 
 		// Resolve actual file path inside the staticDir
 		requestedPath := filepath.Join(staticDir, r.URL.Path)

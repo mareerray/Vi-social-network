@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -21,6 +22,16 @@ func CreateNotification(recipientID int64, actorID int64, ntype string, data str
 // publishes a realtime copy to the in-memory bus so connected websocket
 // clients receive it.
 func Notify(recipientID int64, actorID int64, ntype string, payload map[string]interface{}) error {
+
+	// Add actor info (nickname, avatar) to the payload
+	if actorID > 0 {
+		var nickname, avatar sql.NullString
+		err := db.DB.QueryRow("SELECT nickname, avatar FROM users WHERE id = ?", actorID).Scan(&nickname, &avatar)
+		if err == nil {
+			payload["actor_nickname"] = nickname.String
+			payload["actor_avatar"] = utils.AbsURL(nil, avatar.String)
+		}
+	}
 	// ensure payload is JSON string
 	dataBytes, _ := json.Marshal(payload)
 	dataStr := string(dataBytes)

@@ -335,27 +335,36 @@ export default {
       if (!profile.value || isMine.value) return
       try {
         if (following.value) {
+          // Unfollow
           await api.unfollow(profile.value.id)
+          following.value = false
+          pending.value = false
         } else {
+          // Follow
           await api.follow(profile.value.id)
-        }
 
-        if (profile.value.is_accessible) {
-          followers.value = await api.getFollowers(userId.value)
-          if (isMine.value) {
-            followRequests.value = await api.listFollowRequests()
+          // Immediately show "pending" if target is private
+          if (profile.value.profile_type === 'private') {
+            pending.value = true
+            following.value = false
+          } else {
+            // For public profiles, automatically follow
+            following.value = true
+            pending.value = false
           }
         }
 
-        if (auth.user) {
-          const status = await api.getFollowStatus(profile.value.id)
-          following.value = !!status.following
-          pending.value = !!status.request_pending
-        }
+        // Refresh counts safely
+        const f = await api.getFollowers(userId.value)
+        followers.value = Array.isArray(f) ? f : []
+        const fl = await api.getFollowing(userId.value)
+        followingList.value = Array.isArray(fl) ? fl : []
       } catch (error) {
-        console.error("Follow/unfollow error:", error)
+        console.error('Follow/unfollow error:', error)
       }
     }
+
+
 
     const refreshRequests = async () => {
       if (isMine.value) {

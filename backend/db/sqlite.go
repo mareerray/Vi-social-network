@@ -45,6 +45,14 @@ func InitDB() {
 		panic(fmt.Sprintf("Failed to connect to DB: %v", err))
 	}
 
+	// enforce foreign key constraints globally for this connection
+	_, fkErr := DB.Exec("PRAGMA foreign_keys = ON;")
+	if fkErr != nil {
+		log.Printf("Warning: failed to enable foreign key enforcement: %v", fkErr)
+	} else {
+		log.Println("SQLite foreign key enforcement enabled")
+	}
+
 	// Run migrations
 	driver, err := sqlite3.WithInstance(DB, &sqlite3.Config{})
 	if err != nil {
