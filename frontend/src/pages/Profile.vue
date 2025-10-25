@@ -172,7 +172,8 @@
                   </div>
                   <div v-else class="list-group list-group-flush">
                     <div v-for="f in followers" :key="f.id" class="list-group-item d-flex align-items-center">
-                      <i class="fas fa-user-circle fa-2x text-primary me-3"></i>
+                      <img v-if="memberAvatar(f.avatar)" :src="memberAvatar(f.avatar)" alt="avatar" class="rounded-circle me-3" style="width:32px;height:32px;object-fit:cover;" />
+                      <i v-else class="fas fa-user-circle text-primary me-3" style="font-size:32px;"></i>
                       <span>{{ f.nickname }}</span>
                     </div>
                   </div>
@@ -193,7 +194,8 @@
                   </div>
                   <div v-else class="list-group list-group-flush">
                     <div v-for="f in followingList" :key="f.id" class="list-group-item d-flex align-items-center">
-                      <i class="fas fa-user-circle fa-2x text-success me-3"></i>
+                      <img v-if="memberAvatar(f.avatar)" :src="memberAvatar(f.avatar)" alt="avatar" class="rounded-circle me-3" style="width:32px;height:32px;object-fit:cover;" />
+                      <i v-else class="fas fa-user-circle text-primary me-3" style="font-size:32px;"></i>
                       <span>{{ f.nickname }}</span>
                     </div>
                   </div>
@@ -246,6 +248,7 @@ import { listPosts } from '@/api/post'
 import { useAuthStore } from '@/store/auth'
 import PostCard from '@/components/PostCard.vue'
 import CreatePost from '@/components/CreatePost.vue'
+import { resolveAsset } from '@/utils/resolveUrl'
 
 export default {
   components: { PostCard, CreatePost },
@@ -397,8 +400,16 @@ export default {
 
   watch(userId, load, { immediate: true })
 
+  const memberAvatar = (avatar) => {
+    return resolveAsset(avatar) || ''
+  }
+
   // Note: avatar upload UI was intentionally removed — avatars are URL-only now.
-  return { profile, followers, followingList, followRequests, posts, following, pending, postCount, isMine, load, changePrivacy, toggleFollow, handleAccept, handleDecline, msg }
+  return { 
+    profile, followers, followingList, followRequests, posts, 
+    following, pending, postCount, isMine, load, changePrivacy, 
+    toggleFollow, handleAccept, handleDecline, msg, memberAvatar 
+  }
   }
 }
 </script>

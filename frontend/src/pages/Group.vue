@@ -8,6 +8,22 @@
       <h5>Members: {{ group.members }}</h5>
     </div>
 
+    <!-- Members list -->
+    <div v-if="group.members_list && group.members_list.length > 0" class="card mb-3">
+      <div class="card-body">
+        <h5>Members</h5>
+        <div class="d-flex flex-wrap">
+          <div v-for="m in group.members_list" :key="m.id" class="me-2 mb-2 text-center member-tile">
+            <div>
+              <img v-if="memberAvatar(m.avatar)" :src="memberAvatar(m.avatar)" alt="avatar" class="rounded-circle" style="width:64px;height:64px;object-fit:cover;" />
+              <i v-else class="fas fa-user-circle text-primary" style="font-size:64px;"></i>
+            </div>
+            <div class="small mt-1 member-name" style="word-break:break-word">{{ m.nickname || ('User ' + m.id) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
         <!-- Invite users (visible to members and owner) -->
     <div v-if="group.group && isMember || isOwner" class="card mb-3">
       <div class="card-body">
@@ -21,7 +37,8 @@
         <div class="list-group">
           <div v-for="f in filteredUsers" :key="f.id" class="list-group-item d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
-              <img v-if="f.avatar" :src="f.avatar" alt="avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;" />
+              <img v-if="memberAvatar(f.avatar)" :src="memberAvatar(f.avatar)" alt="avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;" />
+              <i v-else class="fas fa-user-circle text-primary me-2" style="font-size:32px;"></i>
               <div>
                 <strong>{{ f.nickname || ('User ' + f.id) }}</strong>
                 <div v-if="f.full_name" class="small text-muted">{{ f.full_name }}</div>
@@ -61,7 +78,7 @@
         <div class="list-group">
           <div v-for="r in requests" :key="r.id" class="list-group-item d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center">
-              <img v-if="r.avatar" :src="r.avatar" alt="avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;" />
+              <img v-if="r.avatar" :src="memberAvatar(r.avatar)" alt="avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;" />
               <div>
                 <strong>{{ r.nickname || ('User ' + r.requester_id) }}</strong>
                 <div class="small text-muted">Requested at {{ r.created_at }}</div>
@@ -154,6 +171,7 @@
 <script>
 import { getGroup, listGroupPosts, createGroupPost, addGroupComment, inviteToGroup, checkMembership, requestToJoin, respondRequest, listRequests, getRequestStatus, createEvent, voteEvent, listEvents } from '../api/groups'
 import Comment from '@/components/Comment.vue'
+import { resolveAsset } from '@/utils/resolveUrl'
 import { listUsers } from '@/api/users'
 import { useAuthStore } from '@/store/auth'
 import { useChatStore } from '@/store/chat'
@@ -366,6 +384,10 @@ export default {
       } finally {
         this.invitingIds = this.invitingIds.filter(id => id !== userId)
       }
+    },
+    memberAvatar(avatar) {
+      // resolveAsset returns full URL or empty string
+      return resolveAsset(avatar) || ''
     },
     async requestJoin() {
       try {

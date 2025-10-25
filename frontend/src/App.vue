@@ -19,6 +19,15 @@ onMounted(() => {
 
 <style>
 /* Global app styles */
+/* Prevent over-scrolling */
+html, body {
+  overflow-x: hidden; /* Prevents horizontal over-scroll */
+  overscroll-behavior: none; /* Prevents bounce effect */
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   min-height: 100vh;
@@ -27,6 +36,7 @@ body {
 
 #app {
   min-height: 100vh;
+  overflow-x: hidden; /* Also prevent horizontal scroll on app container */
 }
 
 .container {

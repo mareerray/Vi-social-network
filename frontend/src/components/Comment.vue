@@ -22,6 +22,7 @@
       class="form-control"
     />
     <input
+      v-if="!isGroup"
       type="file"
       @change="onFile"
       accept="image/*"
