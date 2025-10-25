@@ -85,7 +85,7 @@
     <div v-for="p in posts" :key="p.id" class="card mb-2">
       <div class="card-body">
         <p>{{ p.content }}</p>
-  <img v-if="p.image_url" :src="p.image_url" class="img-fluid" />
+  <img v-if="p.image_url" :src="`http://localhost:8080${p.image_url}`" class="img-fluid" />
         <div class="mt-2">
           <Comment :postId="p.id" :isGroup="true" @comment-added="load" />
         </div>
