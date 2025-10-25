@@ -328,9 +328,8 @@ func AddGroupCommentHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := strconv.ParseInt(uid, 10, 64)
 
 	var payload struct {
-		PostID   int64  `json:"post_id"`
-		Content  string `json:"content"`
-		ImageURL string `json:"image_url"`
+		PostID  int64  `json:"post_id"`
+		Content string `json:"content"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		fmt.Println("Bad JSON payload:", err)
@@ -360,8 +359,8 @@ func AddGroupCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// insert
-	fmt.Printf("Attempting insert: post_id=%d, user_id=%d, content='%s', image_url='%s'\n", payload.PostID, userID, payload.Content, payload.ImageURL)
-	res, err := db.DB.Exec("INSERT INTO group_comments (post_id, user_id, content, image_url) VALUES (?, ?, ?, ?)", payload.PostID, userID, payload.Content, payload.ImageURL)
+	fmt.Printf("Attempting insert: post_id=%d, user_id=%d, content='%s'\n", payload.PostID, userID, payload.Content)
+	res, err := db.DB.Exec("INSERT INTO group_comments (post_id, user_id, content) VALUES (?, ?, ?)", payload.PostID, userID, payload.Content)
 	if err != nil {
 		fmt.Println("Insert failed:", err)
 		utils.Error(w, http.StatusInternalServerError, "Failed to insert comment")
@@ -387,7 +386,7 @@ func ListGroupCommentsHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     rows, err := db.DB.Query(`
-        SELECT gc.id, gc.post_id, gc.user_id, u.nickname, gc.content, gc.image_url, gc.created_at 
+        SELECT gc.id, gc.post_id, gc.user_id, u.nickname, gc.content, gc.created_at 
         FROM group_comments gc 
         JOIN users u ON gc.user_id = u.id
         WHERE gc.post_id = ? ORDER BY gc.created_at ASC
@@ -401,15 +400,14 @@ func ListGroupCommentsHandler(w http.ResponseWriter, r *http.Request) {
     var out []map[string]interface{}
     for rows.Next() {
         var id, postID, userID int64
-        var nickname, content, imageURL, created string
-        rows.Scan(&id, &postID, &userID, &nickname, &content, &imageURL, &created)
+        var nickname, content, created string
+        rows.Scan(&id, &postID, &userID, &nickname, &content, &created)
         out = append(out, map[string]interface{}{
             "id": id,
             "post_id": postID,
             "user_id": userID,
             "nickname": nickname,
             "content": content,
-            "image_url": imageURL,
             "created_at": created,
         })
     }
