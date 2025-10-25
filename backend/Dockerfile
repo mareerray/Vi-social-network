@@ -1,38 +1,48 @@
-### Backend Dockerfile (multi-stage)
+# Backend Dockerfile
 FROM golang:1.24-alpine AS builder
-WORKDIR /src
 
-# Install sqlite3 client and build tools for cgo builds during build
-RUN apk add --no-cache sqlite sqlite-dev bash git build-base
+# Install build dependencies
+RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
-# Copy go modules and download
-COPY go.mod go.sum /src/
+WORKDIR /build
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies
 RUN go mod download
 
-# Copy backend code
-COPY backend/ /src/backend/
+# Copy source code
+COPY . .
 
-# Build the binary
-WORKDIR /src
-# Build with CGO enabled because github.com/mattn/go-sqlite3 requires cgo
-RUN CGO_ENABLED=1 GOOS=linux go build -o /usr/local/bin/social-network ./backend
+# Build the application
+RUN CGO_ENABLED=1 GOOS=linux go build -o social-network-backend ./backend
 
-# Copy migrations into the image; migrations will be applied at container startup
-COPY backend/db/migrations/sqlite /migrations
 
-### Final image
-FROM alpine:3.18
-RUN apk add --no-cache ca-certificates sqlite bash
-COPY --from=builder /usr/local/bin/social-network /usr/local/bin/social-network
-COPY --from=builder /src/backend /src/backend
-COPY --from=builder /migrations /migrations
+# Final stage
+FROM alpine:latest
 
-# Copy entrypoint (added below) and make it executable
-COPY backend/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Install runtime dependencies
+RUN apk add --no-cache sqlite-libs ca-certificates sqlite bash
 
 WORKDIR /app
-ENV DB_PATH=/app/backend/socialnetwork.db
+
+# Copy binary from builder
+COPY --from=builder /build/social-network-backend .
+
+# Copy migrations
+COPY backend/db/migrations ./db/migrations
+
+# Copy entrypoint script if you have one
+COPY backend/entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
+# Create uploads directory
+RUN mkdir -p uploads/avatars uploads/posts
+
+# Expose the backend port (adjust if needed)
 EXPOSE 8080
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["/usr/local/bin/social-network"]
+
+# Run the application
+ENTRYPOINT ["./entrypoint.sh"]
+CMD ["./social-network-backend"]
